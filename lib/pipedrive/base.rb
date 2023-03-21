@@ -15,7 +15,7 @@ module Pipedrive
   class Base < OpenStruct
 
     include HTTParty
-    
+
     base_uri 'https://api.pipedrive.com/v1'
     headers HEADERS
     format :json
@@ -47,7 +47,7 @@ module Pipedrive
 
       super(struct_attrs)
     end
-    
+
     # Create related objects from hash
     #
     # Only used internally
@@ -65,7 +65,7 @@ module Pipedrive
           related_objects[key] = related_object
         end
       end
-      
+
       related_objects
     end
 
@@ -82,7 +82,7 @@ module Pipedrive
         false
       end
     end
-    
+
     # Destroys the object
     #
     # @return [HTTParty::Response] response
@@ -113,10 +113,10 @@ module Pipedrive
       end
 
       def new_list( attrs )
-        attrs['data'].is_a?(Array) ? attrs['data'].map {|data| self.new( 'data' => data ) } : []
+        attrs.dig('data', 'items').is_a?(Array) ? attrs.dig('data', 'items').map {|data| self.new( 'data' => data ) } : []
       end
 
-      def all(response = nil, options={},get_absolutely_all=false)
+      def all(response = nil, options={}, get_absolutely_all=false)
         res = response || get(resource_path, options)
         if res.ok?
           data = res['data'].nil? ? [] : res['data'].map{|obj| new(obj)}
@@ -126,40 +126,40 @@ module Pipedrive
           end
           data
         else
-          bad_response(res,attrs)
+          bad_response(res, options)
         end
       end
 
-      def create( opts = {} )
+      def create(opts = {})
         res = post resource_path, :body => opts
         if res.success?
           res['data'] = opts.merge res['data']
           new(res)
         else
-          bad_response(res,opts)
+          bad_response(res, opts)
         end
       end
-      
+
       def search opts
         res = get resource_path, query: opts
         res.ok? ? new_list(res) : bad_response(res, opts)
       end
-      
+
       def find(id)
         res = get "#{resource_path}/#{id}"
         res.ok? ? new(res) : bad_response(res,id)
       end
 
       def find_by_name(name, opts={})
-        res = get "#{resource_path}/find", :query => { :term => name }.merge(opts)
+        res = get "#{resource_path}/search", :query => { :term => name, :fields => 'name' }.merge(opts)
         res.ok? ? new_list(res) : bad_response(res,{:name => name}.merge(opts))
       end
 
       def destroy(id)
-         res = delete "#{resource_path}/#{id}"
-         res.ok? ? res : bad_response(res, id)
+        res = delete "#{resource_path}/#{id}"
+        res.ok? ? res : bad_response(res, id)
       end
-      
+
       def resource_path
         # The resource path should match the camelCased class name with the
         # first letter downcased.  Pipedrive API is sensitive to capitalisation
@@ -169,5 +169,4 @@ module Pipedrive
       end
     end
   end
-
 end
